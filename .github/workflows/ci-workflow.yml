@@ -1,0 +1,53 @@
+name: Build & Publish
+
+# Run the workflow manually
+on:
+  workflow_dispatch
+
+# One or more jobs that can run sequentially or in parallel
+jobs:
+    # Job called "build"
+    job:
+        # The type of runner that the job will run on
+        runs-on: ubuntu-latest
+        env:
+            DOTNET_NOLOGO: true
+            DOTNET_CLI_TELEMETRY_OPTOUT: true
+            NETCORE_VERSION: '3.1.x'
+            PROJECT_PATH: 'src/MyConsoleApp/MyConsoleApp.csproj'
+            WORKSPACE: ${{ github.workspace }}
+            ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+        # Sequence of tasks that will be executed as part of the job
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v2
+              
+            - name: Setup .NET Core
+              uses: actions/setup-dotnet@v1.5.0
+              with:
+                  dotnet-version: ${{ env.NETCORE_VERSION }}
+
+            - name: Install dependencies
+              run: dotnet restore ${{ env.PROJECT_PATH }}
+
+            - name: Build Project
+              run: dotnet build --configuration Release --no-restore ${{ env.PROJECT_PATH }}
+
+            - name: Resources - Machine Translation
+              uses: ./.github/actions/sdl-mt-cloud-action
+              with:
+                  client-id: ${{ secrets.BEGLOBAL_CLIENT_ID }}
+                  client-secret: ${{ secrets.BEGLOBAL_CLIENT_SECRET }}
+                  source-path: '${{ env.WORKSPACE }}/src/MyConsoleApp/Resources'
+                  target-language: 'fra'
+                  translation-model: null
+
+            - name: Publish Project
+              run: dotnet publish --configuration Release --no-restore ${{ env.PROJECT_PATH }}
+          
+            - name: Upload Publish Folder
+              uses: actions/upload-artifact@v2
+              with:
+                  name: app-package
+                  path: '${{ env.WORKSPACE }}/src/MyConsoleApp/bin/Release/netcoreapp3.1/publish'
